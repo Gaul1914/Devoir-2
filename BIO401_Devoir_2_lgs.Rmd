@@ -1,0 +1,243 @@
+---
+title: "Devoir 2"
+author: "Les vers verts vont vers le verre"
+date: "13/03/2024"
+output: html_document
+---
+
+
+# À remettre sur Moodle au plus tard le 27 mars 2024 avant le début du cours. 
+
+## Question 1 
+### Mise en contexte
+
+Vous êtes impliqué dans un projet dont l'intérêt est d'étudier comment deux espèces bactériennes interagissent entre elles dans un environnement hautement contrôlé (c'est-à-dire une boîte de Petri). Au début de l'expérience, 25 individus de l'espèce *bogustonia proii* et 20 individus de l'espèce *aleastonia predatora* ont été inoculés dans la boîte de Petri. Pendant l'expérience, les individus de chaque espèce ont été comptés indépendamment toutes les heures pendant deux semaines (beaucoup d'efforts et de nuits blanches ont été nécessaires pour ce projet).  
+
+Les données qui ont été recueillies pendant ces deux semaines sont disponibles dans le fichier `2Bacteries.csv`.
+
+Un chercheur impliqué dans le projet pense que la relation entre les deux espèces bactériennes est une relation consommateur-ressource, mais il n'est pas certain de comment construire un modèle pour tester cette hypothèse. Comme il y a plusieurs façons de construire un modèle consommateur-ressource, proposer un modèle consommateur-ressource qui vous permettra de mieux caractériser la dynamique entre les deux espèces. 
+
+*Indice :* Un des chercheurs de l'équipe qui connait très bien l'espèce *bogustonia proii* a remarqué que dans une expérience similaire qui n'a durée que 5 jours, le taux de croissance de cette espèce n'était pas constant. Plus il y avait d'individu moins le taux de croissance était élevé.
+
+### 2 points
+
+a) Présenter le modèle que vous souhaitez utiliser. Assurez-vous de bien définir la notation pour le modèle.
+
+$$\frac{dR}{dt} = \alpha R_{(t)}\left(1-\frac{R_{(t)}}{K}\right)-\beta R_{(t)}C_{(t)}$$
+$$\frac{dC}{dt}=\gamma R_{(t)}C_{(t)}-\delta C_{(t)}$$
+où
+$R_{(t)}$ = nombre de proies
+$C_{(t)}$ = nombre de prédateurs
+$\alpha$ = taux de croissance des proies
+k = capacité de soutien pour les proies
+$\beta$ = taux de consommation de la ressource
+$\gamma$ = $\epsilon\beta$ 
+$\epsilon$ = taux de transfert entre proies et prédateurs ????
+$\delta$ = taux de croissance des prédateurs
+
+
+### 8 points
+
+b) Implémentez le modèle que vous considérez le plus approprié dans R en utilisant les techniques apprises en cours et essayez une série de valeurs différentes pour trouver les meilleures paramètres. Utilisez la corrélation de Pearson pour trouver les paramètres qui correspondent le mieux aux données.
+
+```{r}
+library(deSolve)
+bact<-read.csv("2Bactéries.csv",header = T)
+plot(bact$temps,bact$bogustonia_proii, col="red")
+points(bact$temps,bact$aleastonia_predatora, col="blue")
+plot(bact$bogustonia_proii,bact$aleastonia_predatora)
+
+proiepred<-function(t, vars, parms=c(alpha=1,k=1,beta=1,gamma=1,delta=1)){
+  with(as.list(c(parms,vars)),{
+    dR <- alpha*R*(1-R/k)-beta*R*C
+    dC <- gamma*R*C-delta*C
+    res <- c(dR=dR, dC=dC)
+    return(list(res))
+  })
+}
+
+#conditions initiales
+R0<-25
+C0<-20
+condIni <-  c(R=R0,C=C0)
+
+tmax<-336
+temps<-seq(0,tmax,by=1)
+
+#paramètres
+a<-0.7
+k<-100000
+b<-0.15
+g<-0.2
+d<-0.4
+
+res_a<-data.frame(val_a=0,cor_r=0,cor_c=0,somme=0)
+for (i in 1:50){
+  res_a[i,1]<-runif(1,min=0,max=1)
+  a<-res_a[i,1]
+  parametre<-c(alpha=a,k=k,beta=b,gamma=g,delta=d)
+  ProiepredRes <- ode(y = condIni, times = temps, func = proiepred,parms = parametre)
+  cor_proie<-cor.test(ProiepredRes[,"R"],bact$bogustonia_proii)
+  res_a[i,2]<-cor_proie$estimate
+  cor_pred<-cor.test(ProiepredRes[,"C"],bact$aleastonia_predatora)
+  res_a[i,3]<-cor_pred$estimate
+  res_a[i,4]<-cor_proie$estimate+cor_pred$estimate
+}
+a1<-res_a$val_a[res_a$cor_r==max(res_a$cor_r)]
+a2<-res_a$val_a[res_a$cor_c==max(res_a$cor_c)]
+a<-res_a$val_a[res_a$somme==max(res_a$somme)]
+
+res_b<-data.frame(val_b=0,cor_r=0,cor_c=0,somme=0)
+for (i in 1:100){
+  res_b[i,1]<-runif(1,min=0,max=0.2)
+  b<-res_b[i,1]
+  parametre<-c(alpha=a,k=k,beta=b,gamma=g,delta=d)
+  ProiepredRes <- ode(y = condIni, times = temps, func = proiepred,parms = parametre)
+  cor_proie<-cor.test(ProiepredRes[,"R"],bact$bogustonia_proii)
+  res_b[i,2]<-cor_proie$estimate
+  cor_pred<-cor.test(ProiepredRes[,"C"],bact$aleastonia_predatora)
+  res_b[i,3]<-cor_pred$estimate
+  res_b[i,4]<-cor_proie$estimate+cor_pred$estimate
+}
+b1<-res_b$val_b[res_b$cor_r==max(res_b$cor_r)]
+b2<-res_b$val_b[res_b$cor_c==max(res_b$cor_c)]
+b<-res_b$val_b[res_b$somme==max(res_b$somme)]
+
+res_g<-data.frame(val_g=0,cor_r=0,cor_c=0,somme=0)
+for (i in 1:100){
+  res_g[i,1]<-runif(1,min=0,max=0.1)
+  g<-res_g[i,1]
+  parametre<-c(alpha=a,k=k,beta=b,gamma=g,delta=d)
+  ProiepredRes <- ode(y = condIni, times = temps, func = proiepred,parms = parametre)
+  cor_proie<-cor.test(ProiepredRes[,"R"],bact$bogustonia_proii)
+  res_g[i,2]<-cor_proie$estimate
+  cor_pred<-cor.test(ProiepredRes[,"C"],bact$aleastonia_predatora)
+  res_g[i,3]<-cor_pred$estimate
+  res_g[i,4]<-cor_proie$estimate+cor_pred$estimate
+}
+g1<-res_g$val_g[res_g$cor_r==max(res_g$cor_r)]
+g2<-res_g$val_g[res_g$cor_c==max(res_g$cor_c)]
+g<-res_g$val_g[res_g$somme==max(res_g$somme)]
+
+res_d<-data.frame(val_d=0,cor_r=0,cor_c=0,somme=0)
+for (i in 1:100){
+  res_d[i,1]<-runif(1,min=0.2,max=1)
+  d<-res_d[i,1]
+  parametre<-c(alpha=a,k=k,beta=b,gamma=g,delta=d)
+  ProiepredRes <- ode(y = condIni, times = temps, func = proiepred,parms = parametre)
+  cor_proie<-cor.test(ProiepredRes[,"R"],bact$bogustonia_proii)
+  res_d[i,2]<-cor_proie$estimate
+  cor_pred<-cor.test(ProiepredRes[,"C"],bact$aleastonia_predatora)
+  res_d[i,3]<-cor_pred$estimate
+  res_d[i,4]<-cor_proie$estimate+cor_pred$estimate
+}
+d1<-res_d$val_d[res_d$cor_r==max(res_d$cor_r)]
+d2<-res_d$val_d[res_d$cor_c==max(res_d$cor_c)]
+d<-res_d$val_d[res_d$somme==max(res_d$somme)]
+
+res_k<-data.frame(val_k=0,cor_r=0,cor_c=0,somme=0)
+for (i in 1:100){
+  res_k[i,1]<-i*1000
+  k<-res_k[i,1]
+  parametre<-c(alpha=a,k=k,beta=b,gamma=g,delta=d)
+  ProiepredRes <- ode(y = condIni, times = temps, func = proiepred,parms = parametre)
+  cor_proie<-cor.test(ProiepredRes[,"R"],bact$bogustonia_proii)
+  res_k[i,2]<-cor_proie$estimate
+  cor_pred<-cor.test(ProiepredRes[,"C"],bact$aleastonia_predatora)
+  res_k[i,3]<-cor_pred$estimate
+  res_k[i,4]<-cor_proie$estimate+cor_pred$estimate
+}
+k1<-res_k$val_k[res_k$cor_r==max(res_k$cor_r)]
+k2<-res_k$val_k[res_k$cor_c==max(res_k$cor_c)]
+k<-res_k$val_k[res_k$somme==max(res_k$somme)]
+
+
+parametre<-c(alpha=a,k=k,beta=b,gamma=g,delta=d)
+#graphique
+ProiepredRes <- ode(y = condIni, times = temps, func = proiepred,parms = parametre)
+plot(0,0,xlim=c(0,35),ylim=c(0,30),type="n",xlab="nb proies",ylab="nb prédateurs",las=1)
+points(ProiepredRes[,"R"], ProiepredRes[,"C"], col="red")
+points(bact$bogustonia_proii,bact$aleastonia_predatora, col="blue")
+
+cor_pred<-cor.test(ProiepredRes[,"C"],bact$aleastonia_predatora)
+cor_C<-cor_pred$estimate
+cor_proie<-cor.test(ProiepredRes[,"R"],bact$bogustonia_proii)
+cor_R<-cor_pred$estimate
+
+
+##Modèle exponentiel
+proiepred_exp<-function(t, vars, parms=c(alpha=1,beta=1,gamma=1,delta=1)){
+  with(as.list(c(parms,vars)),{
+    dR <- alpha*R-beta*R*C
+    dC <- gamma*R*C-delta*C
+    res <- c(dR=dR, dC=dC)
+    return(list(res))
+  })
+}
+
+parametre2<-c(alpha=a,beta=b,gamma=g,delta=d)
+ProiepredRes_exp<- ode(y = condIni, times = temps, func = proiepred_exp,parms = parametre2)
+
+cor_pred_exp<-cor.test(ProiepredRes_exp[,"C"],bact$aleastonia_predatora)
+cor_C_exp<-cor_pred_exp$estimate
+cor_proie_exp<-cor.test(ProiepredRes_exp[,"R"],bact$bogustonia_proii)
+cor_R_exp<-cor_pred_exp$estimate
+```
+
+### 1 point
+
+c) Même si vous n'obtenez pas un modèle qui s'adapte très bien aux données, expliquez brièvement comment vous pensez que les différents modèles que vous obtenez peuvent aider à rejeter (ou non) l'hypothèse proposée par ce chercheur.
+
+***
+
+### 1 point
+
+d) Après avoir étudié les données en utilisant le modèle ressource-consommateur à la question précédent, proposez une nouvelle expérience qui aiderait à donner des réponses plus précises sur les facteurs générant le comportement périodique trouvé pour les deux espèces bactériennes.
+
+Assurez-vous que l'expérience puisse être réalisée dans un délai raisonnable (au maximum 2 semaines).
+
+Afin de mieux estimer les paramètres du  modèle, il serait utile de connaître comment le taux de croissance varie selon l'abondance des individus pour les proies et les prédateurs. Pour ce faire, il faudrait inoculer les deux espèces de bactéries sur des pétris séparés en condition optimale pour leur croissance. Donc inoculer 25 *bogustonia proii* dans un pétri et 20 *aleastonia predatora* sur un autre pétri.Ensuite, suivre la croissance des deux populations en dénombrant les individus à toutes les heures pendant 1 semaine.
+ 
+## Question 2 (10 points)
+
+Considerons le modèle de métapopulation de Levins,
+$$
+\begin{align}
+  \frac{dP}{dt} = cN_{occ}\left(1-\frac{N_{occ}}{N}\right)- eN_{occ}, \, \qquad N_{occ}(0)=N_{ini},
+\end{align}
+$$
+où $c$ est le taux de colonisation, $e$ le taux d'extinction, $N$ le nombre de sites considérés et $N_{occ}$ le nombre de sites où l'espèce est présente et $N_{occ}(t)$ est la nombre de sites occupés au temps $t$.
+
+Écrivez la fonction ```R``` ```metapopGill()``` qui implémente l'algorithme de Gillespie pour produire une réalisation du processus stochastique pour le modèle de métapopulation de Levins tel que définit par l'équation ci-dessus lorsque $N_{occ} \to \left(1-\frac{e}{c}\right)N$. Votre fonction doit avoir les arguments 
+  ```col```, ```ext```, ```N```,   ```Nini``` (nombre initial de site où l'espèce est présente) et ```tmax``` (le temps après lequel la simulation se termine). 
+
+Indice : il faut utiliser une boucle `while`.
+
+Note : N'oubliez pas de commenter votre code.
+
+***
+
+## Question 3 (10 points)  
+
+Comparer 3 itérations du modèle de métapopulation stochastiques avec le modèle de métapopulation déterministique pour $c=2$, $e=1$ $N_{ini}=1$ et
+  $N\in\{100,1000,10000, 100000\}$.  Présenter vos résultats dans des graphiques où chaque figure est définit par une valeur différente de $N$.
+
+***
+
+### Résultat pour $N=100$
+
+### Résultat pour $N=1000$
+
+### Résultat pour $N=10000$
+
+### Résultat pour $N=100000$
+
+***
+
+## Question 4 (2 points)
+
+Expliquer brièvement comment la taille de la population totale ($N$) influence la dynamique stochastique du modèle de métapopulation.  
+
+
+***
+
