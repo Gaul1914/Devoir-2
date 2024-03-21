@@ -32,7 +32,7 @@ $\alpha$ = taux de croissance des proies
 k = capacité de soutien pour les proies
 $\beta$ = taux de consommation de la ressource
 $\gamma$ = $\epsilon\beta$ 
-$\epsilon$ = taux de transfert entre proies et prédateurs ????
+$\epsilon$ = taux de transformation de la ressource consommée en nouveau consommateur
 $\delta$ = taux de croissance des prédateurs
 
 
@@ -65,15 +65,16 @@ tmax<-336
 temps<-seq(0,tmax,by=1)
 
 #paramètres
-a<-0.7
+a<-0.15  ##0.15195153
 k<-100000
-b<-0.15
-g<-0.2
-d<-0.4
+b<-0.02  ##0.0183848
+g<-0.02  ##0.0224575
+d<-0.4  ##0.39442493
 
+for (j in 1:10){
 res_a<-data.frame(val_a=0,cor_r=0,cor_c=0,somme=0)
-for (i in 1:50){
-  res_a[i,1]<-runif(1,min=0,max=1)
+for (i in 1:100){
+  res_a[i,1]<-runif(1,min=0,max=0.4)
   a<-res_a[i,1]
   parametre<-c(alpha=a,k=k,beta=b,gamma=g,delta=d)
   ProiepredRes <- ode(y = condIni, times = temps, func = proiepred,parms = parametre)
@@ -89,7 +90,7 @@ a<-res_a$val_a[res_a$somme==max(res_a$somme)]
 
 res_b<-data.frame(val_b=0,cor_r=0,cor_c=0,somme=0)
 for (i in 1:100){
-  res_b[i,1]<-runif(1,min=0,max=0.2)
+  res_b[i,1]<-runif(1,min=0,max=0.1)
   b<-res_b[i,1]
   parametre<-c(alpha=a,k=k,beta=b,gamma=g,delta=d)
   ProiepredRes <- ode(y = condIni, times = temps, func = proiepred,parms = parametre)
@@ -121,7 +122,7 @@ g<-res_g$val_g[res_g$somme==max(res_g$somme)]
 
 res_d<-data.frame(val_d=0,cor_r=0,cor_c=0,somme=0)
 for (i in 1:100){
-  res_d[i,1]<-runif(1,min=0.2,max=1)
+  res_d[i,1]<-runif(1,min=0.2,max=0.6)
   d<-res_d[i,1]
   parametre<-c(alpha=a,k=k,beta=b,gamma=g,delta=d)
   ProiepredRes <- ode(y = condIni, times = temps, func = proiepred,parms = parametre)
@@ -135,9 +136,10 @@ d1<-res_d$val_d[res_d$cor_r==max(res_d$cor_r)]
 d2<-res_d$val_d[res_d$cor_c==max(res_d$cor_c)]
 d<-res_d$val_d[res_d$somme==max(res_d$somme)]
 
+
 res_k<-data.frame(val_k=0,cor_r=0,cor_c=0,somme=0)
 for (i in 1:100){
-  res_k[i,1]<-i*1000
+  res_k[i,1]<-i*10000
   k<-res_k[i,1]
   parametre<-c(alpha=a,k=k,beta=b,gamma=g,delta=d)
   ProiepredRes <- ode(y = condIni, times = temps, func = proiepred,parms = parametre)
@@ -150,7 +152,7 @@ for (i in 1:100){
 k1<-res_k$val_k[res_k$cor_r==max(res_k$cor_r)]
 k2<-res_k$val_k[res_k$cor_c==max(res_k$cor_c)]
 k<-res_k$val_k[res_k$somme==max(res_k$somme)]
-
+}
 
 parametre<-c(alpha=a,k=k,beta=b,gamma=g,delta=d)
 #graphique
@@ -162,7 +164,7 @@ points(bact$bogustonia_proii,bact$aleastonia_predatora, col="blue")
 cor_pred<-cor.test(ProiepredRes[,"C"],bact$aleastonia_predatora)
 cor_C<-cor_pred$estimate
 cor_proie<-cor.test(ProiepredRes[,"R"],bact$bogustonia_proii)
-cor_R<-cor_pred$estimate
+cor_R<-cor_proie$estimate
 
 
 ##Modèle exponentiel
@@ -181,7 +183,7 @@ ProiepredRes_exp<- ode(y = condIni, times = temps, func = proiepred_exp,parms = 
 cor_pred_exp<-cor.test(ProiepredRes_exp[,"C"],bact$aleastonia_predatora)
 cor_C_exp<-cor_pred_exp$estimate
 cor_proie_exp<-cor.test(ProiepredRes_exp[,"R"],bact$bogustonia_proii)
-cor_R_exp<-cor_pred_exp$estimate
+cor_R_exp<-cor_proie_exp$estimate
 ```
 
 ### 1 point
